@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Terabyte Worlds — under creation</title>
+<meta name="description" content="Terabyte Worlds — where brands become worlds. Site em construção." />
+
+<!-- Fontes da marca: Space Grotesk (títulos) + Inter (corpo/labels) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  /* ============================================================
+     TOKENS DA MARCA (brandbook Terabyte Worlds)
+     ============================================================ */
+  :root {
+    --deep-space:  #0A0E1A;   /* fundo principal — nunca preto puro */
+    --electric:    #00F5FF;   /* acento — só em destaque/interação */
+    --signal:      #0099CC;   /* suporte — divisores, bordas */
+    --frost:       #E8F4F8;   /* texto principal — nunca branco puro */
+    --steel:       #4A5568;   /* texto secundário — labels, captions */
+
+    --pad: 32px;              /* base do grid de 8px */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; width: 100%; }
+
+  body {
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 42%,
+        #0E1526 0%,
+        var(--deep-space) 55%,
+        #06090F 100%);
+    color: var(--frost);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;                 /* nada de scroll — página cheia */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Canvas ocupa a viewport inteira; header/footer ficam por cima */
+  #scene {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    display: block;
+  }
+
+  .stage {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;             /* deixa o mouse passar pro canvas */
+  }
+
+  /* ============================================================
+     CABEÇALHO — logo + wordmark à esquerda / status à direita
+     ============================================================ */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--pad) var(--pad) 16px var(--pad);
+  }
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+
+  /* Logo PNG do cabeçalho — altura fixa, largura proporcional */
+  .mark-img {
+    height: 32px;
+    width: auto;
+    max-width: 240px;
+    flex: 0 0 auto;
+    display: block;
+  }
+
+  .wordmark {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    letter-spacing: 0.14em;
+    color: var(--frost);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .wordmark b { font-weight: 700; }
+  .wordmark span { font-weight: 400; }   /* "WORLDS" mais leve que "TERABYTE" */
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--steel);
+  }
+  .status .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--electric);
+    box-shadow: 0 0 10px 1px rgba(0,245,255,0.55);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);   }
+    50%      { opacity: 0.35; transform: scale(0.72); }
+  }
+
+  /* Divisor fino em Signal Blue (regra do brandbook) */
+  .divider {
+    height: 1px;
+    margin: 0 var(--pad);
+    background: linear-gradient(to right,
+      rgba(0,153,204,0)   0%,
+      rgba(0,153,204,0.55) 12%,
+      rgba(0,153,204,0.55) 88%,
+      rgba(0,153,204,0)   100%);
+  }
+
+  /* Área central: só respiro; o globo é desenhado no canvas de fundo */
+  main { flex: 1 1 auto; }
+
+  /* ============================================================
+     RODAPÉ — tagline oficial + domínio
+     ============================================================ */
+  footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);   /* centro do bloco fica na posição definida via JS */
+    text-align: center;
+    padding: 0 var(--pad);
+  }
+  .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: clamp(20px, 3.4vw, 34px);
+    letter-spacing: 0.01em;
+    color: var(--frost);
+    line-height: 1.15;
+  }
+  .domain {
+    margin-top: 12px;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--steel);
+  }
+
+  @media (max-width: 600px) {
+    :root { --pad: 20px; }
+    .wordmark { font-size: 16px; letter-spacing: 0.12em; }
+    .status span { display: none; }   /* no mobile mantém só o ponto pulsante */
+  }
+</style>
+</head>
+
+<body>
+  <!-- Fundo infinito + globo interativo -->
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div class="stage">
+    <header>
+      <div class="brand">
+        <!-- Seu logo PNG. Coloque o arquivo chamado "logo.png" na MESMA pasta do index.html. -->
+        <img class="mark-img" src="logo.png" alt="Terabyte Worlds" />
+        <!-- Se o seu PNG já tiver o nome "Terabyte Worlds" escrito, apague a linha abaixo. -->
+        <span class="wordmark"><b>TERABYTE</b> <span>WORLDS</span></span>
+      </div>
+      <div class="status"><span class="dot"></span><span>under creation</span></div>
+    </header>
+
+    <div class="divider"></div>
+
+    <main></main>
+
+    <footer>
+      <h1 class="tagline">where brands become worlds</h1>
+      <p class="domain">terabyteworlds.com</p>
+    </footer>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     PALETA (para desenhar no canvas)
+     ============================================================ */
+  var FROST = [232, 244, 248];
+  var CYAN  = [0, 245, 255];
+  var STEEL = [74, 85, 104];
+
+  var canvas = document.getElementById("scene");
+  var ctx = canvas.getContext("2d");
+
+  var W = 0, H = 0, DPR = 1;
+  var cx = 0, cy = 0;          // centro do globo (px CSS)
+  var radius = 0;              // raio do globo (px CSS)
+  var FOCAL = 3.2;             // perspectiva (maior = mais suave)
+
+  var points = [];            // pontos unitários da esfera
+  var stars = [];             // fundo "infinito"
+  var baseDotR = 2;
+
+  /* --- estado da interação --- */
+  var pointer = { x: 0, y: 0, active: false };
+  var grow = 1;                // escala global do globo (cresce no hover)
+  var growTarget = 1;
+  var reveal = 0;              // fade-in de entrada (0 -> 1)
+
+  var reduceMotion = window.matchMedia &&
+                     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ============================================================
+     GERAÇÃO DA ESFERA (distribuição de Fibonacci = pontos uniformes)
+     ============================================================ */
+  function buildSphere(n) {
+    var arr = [];
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for (var i = 0; i < n; i++) {
+      var y = 1 - (i / (n - 1)) * 2;      // 1 -> -1
+      var r = Math.sqrt(Math.max(0, 1 - y * y));
+      var theta = golden * i;
+      arr.push({ x: Math.cos(theta) * r, y: y, z: Math.sin(theta) * r });
+    }
+    return arr;
+  }
+
+  function buildStars(n) {
+    var arr = [];
+    for (var i = 0; i < n; i++) {
+      arr.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        s: 0.5 + Math.random() * 1.1,
+        a: 0.06 + Math.random() * 0.28,
+        dx: (Math.random() - 0.5) * 0.06,
+        dy: (Math.random() - 0.5) * 0.06,
+        ph: Math.random() * Math.PI * 2,
+        steel: Math.random() < 0.35
+      });
+    }
+    return arr;
+  }
+
+  /* ============================================================
+     RESIZE
+     ============================================================ */
+  function resize() {
+    W = canvas.clientWidth  || window.innerWidth;
+    H = canvas.clientHeight || window.innerHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width  = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);   // trabalhar em px CSS
+
+    cx = W / 2;
+    cy = H / 2;
+
+    var m = Math.min(W, H);
+    radius = m * 0.30;
+    baseDotR = Math.max(1.2, Math.min(3.0, radius * 0.0095));
+
+    // densidade de pontos por tamanho de tela
+    var n = m < 560 ? 720 : (m > 1000 ? 1300 : 1050);
+    if (points.length !== n) points = buildSphere(n);
+
+    stars = buildStars(Math.round((W * H) / 14000));
+    placeFooter();
+  }
+
+  /* ============================================================
+     FUNDO INFINITO (starfield sutil com drift + twinkle)
+     ============================================================ */
+  function drawStars(t) {
+    for (var i = 0; i < stars.length; i++) {
+      var st = stars[i];
+      st.x += st.dx; st.y += st.dy;
+      if (st.x < 0) st.x += W; else if (st.x > W) st.x -= W;
+      if (st.y < 0) st.y += H; else if (st.y > H) st.y -= H;
+
+      var tw = 0.7 + 0.3 * Math.sin(t * 0.0011 + st.ph);
+      var col = st.steel ? STEEL : FROST;
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," +
+                      (st.a * tw * reveal).toFixed(3) + ")";
+      ctx.arc(st.x, st.y, st.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  /* ============================================================
+     GLOBO
+     ============================================================ */
+  var spin = 0;
+  var TILT_X = -0.42;   // inclina o eixo (rotação na diagonal)
+  var TILT_Z =  0.30;
+
+  function drawGlobe(dt) {
+    spin += (reduceMotion ? 0.002 : 0.008) * dt;   // rotação bem lenta (~5% do original)
+
+    grow += (growTarget - grow) * 0.08;
+    var R = radius * grow;
+
+    var cosY = Math.cos(spin), sinY = Math.sin(spin);
+    var cosX = Math.cos(TILT_X), sinX = Math.sin(TILT_X);
+    var cosZ = Math.cos(TILT_Z), sinZ = Math.sin(TILT_Z);
+
+    var lensR = R * 0.55;
+    var lensStrength = 0.55;
+
+    var proj = [];
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+
+      // 1) rotação em Y (spin)
+      var x1 = p.x * cosY + p.z * sinY;
+      var z1 = -p.x * sinY + p.z * cosY;
+      var y1 = p.y;
+      // 2) tilt em X
+      var y2 = y1 * cosX - z1 * sinX;
+      var z2 = y1 * sinX + z1 * cosX;
+      var x2 = x1;
+      // 3) tilt em Z (diagonal)
+      var x3 = x2 * cosZ - y2 * sinZ;
+      var y3 = x2 * sinZ + y2 * cosZ;
+      var z3 = z2;
+
+      var persp = FOCAL / (FOCAL - z3);
+      var sx = cx + x3 * R * persp;
+      var sy = cy - y3 * R * persp;
+
+      var depth = (z3 + 1) / 2;                 // 0 fundo -> 1 frente
+      var size = baseDotR * (0.55 + 0.9 * depth) * persp;
+      var alpha = (0.10 + 0.9 * Math.pow(depth, 1.4)) * reveal;
+      var cyanMix = 0;
+
+      // Lente no hover: magnifica e destaca os pontos sob o cursor
+      if (pointer.active) {
+        var ddx = sx - pointer.x, ddy = sy - pointer.y;
+        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (dist < lensR) {
+          var f = 1 - dist / lensR;
+          var push = f * f * lensStrength;
+          sx += ddx * push;
+          sy += ddy * push;
+          size *= 1 + f * 1.7;
+          cyanMix = f;
+          alpha = Math.min(1, alpha + f * 0.35);
+        }
+      }
+
+      proj.push({ sx: sx, sy: sy, size: size, alpha: alpha, z: z3, mix: cyanMix });
+    }
+
+    // desenha de trás pra frente (frente por cima)
+    proj.sort(function (a, b) { return a.z - b.z; });
+
+    for (var j = 0; j < proj.length; j++) {
+      var d = proj[j];
+      var r = Math.round(FROST[0] + (CYAN[0] - FROST[0]) * d.mix);
+      var g = Math.round(FROST[1] + (CYAN[1] - FROST[1]) * d.mix);
+      var b = Math.round(FROST[2] + (CYAN[2] - FROST[2]) * d.mix);
+
+      if (d.mix > 0.15) {   // glow cyan só nos pontos ativos
+        ctx.shadowColor = "rgba(0,245,255," + (d.mix * 0.7).toFixed(3) + ")";
+        ctx.shadowBlur = 8 * d.mix;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + d.alpha.toFixed(3) + ")";
+      ctx.arc(d.sx, d.sy, Math.max(0.4, d.size), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  /* ============================================================
+     LOOP
+     ============================================================ */
+  var last = 0;
+  function frame(now) {
+    if (!last) last = now;
+    var dt = Math.min(3, (now - last) / 16.67);   // normaliza p/ ~60fps
+    last = now;
+
+    reveal += (1 - reveal) * 0.03;
+    ctx.clearRect(0, 0, W, H);
+    drawStars(now);
+    drawGlobe(dt);
+    requestAnimationFrame(frame);
+  }
+
+  /* ============================================================
+     EVENTOS
+     ============================================================ */
+  function setPointer(e) {
+    var rect = canvas.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    pointer.x = t.clientX - rect.left;
+    pointer.y = t.clientY - rect.top;
+    // ativa a lente/zoom só quando o cursor está perto do globo
+    var dx = pointer.x - cx, dy = pointer.y - cy;
+    var near = Math.sqrt(dx * dx + dy * dy) < radius * 1.5;
+    pointer.active = near;
+    growTarget = near ? 1.08 : 1;
+  }
+  function clearPointer() { pointer.active = false; growTarget = 1; }
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("mousemove", setPointer, { passive: true });
+  window.addEventListener("mouseleave", clearPointer);
+  window.addEventListener("touchstart", setPointer, { passive: true });
+  window.addEventListener("touchmove", setPointer, { passive: true });
+  window.addEventListener("touchend", clearPointer);
+
+  /* ============================================================
+     POSIÇÃO DO SLOGAN — centro do bloco no meio do vão entre
+     a base do globo e o rodapé da página (proporcional)
+     ============================================================ */
+  function placeFooter() {
+    var footer = document.querySelector("footer");
+    if (!footer) return;
+    var globeBottom = cy + radius;
+    var mid = (globeBottom + H) / 2;
+    // trava: não cola no globo nem sai da tela em telas curtas
+    mid = Math.max(globeBottom + 20, Math.min(mid, H - 28));
+    footer.style.top = mid + "px";
+  }
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
