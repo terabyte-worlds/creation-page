@@ -9,7 +9,7 @@
 <!-- Fontes da marca: Space Grotesk (títulos) + Inter (corpo/labels) -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
 
 <style>
   /* ============================================================
@@ -97,11 +97,11 @@
     display: flex;
     align-items: center;
     gap: 9px;
-    font-size: 11px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--steel);
+    color: var(--frost);
   }
   .status .dot {
     width: 7px; height: 7px;
@@ -269,7 +269,7 @@
     cy = H / 2;
 
     var m = Math.min(W, H);
-    radius = m * 0.30;
+    radius = m * 0.22;
     baseDotR = Math.max(1.2, Math.min(3.0, radius * 0.0095));
 
     // densidade de pontos por tamanho de tela
@@ -308,7 +308,7 @@
   var TILT_Z =  0.30;
 
   function drawGlobe(dt) {
-    spin += (reduceMotion ? 0.002 : 0.008) * dt;   // rotação bem lenta (~5% do original)
+    spin += (reduceMotion ? 0.001 : 0.003) * dt;   // rotação bem lenta (~35s por volta)
 
     grow += (growTarget - grow) * 0.08;
     var R = radius * grow;
