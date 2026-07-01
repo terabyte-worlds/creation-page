@@ -143,23 +143,21 @@
   .tagline {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 500;
-    font-size: clamp(20px, 3.4vw, 34px);
+    font-size: clamp(17px, 2.2vw, 24px);
     letter-spacing: 0.01em;
     color: var(--frost);
     line-height: 1.15;
   }
-  .domain {
-    margin-top: 12px;
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--steel);
-  }
 
   @media (max-width: 600px) {
-    :root { --pad: 20px; }
-    .wordmark { font-size: 16px; letter-spacing: 0.12em; }
-    .status span { display: none; }   /* no mobile mantém só o ponto pulsante */
+    :root { --pad: 18px; }
+    .mark-img { height: 26px; }
+    .wordmark { font-size: 14px; letter-spacing: 0.10em; }
+    .status { font-size: 10px; letter-spacing: 0.12em; gap: 7px; }
+    .status .dot { width: 6px; height: 6px; }
+  }
+  @media (max-width: 380px) {
+    .status { display: none; }   /* telas muito estreitas: cabeçalho limpo */
   }
 </style>
 </head>
@@ -185,7 +183,6 @@
 
     <footer>
       <h1 class="tagline">where brands become worlds</h1>
-      <p class="domain">terabyteworlds.com</p>
     </footer>
   </div>
 
@@ -206,7 +203,7 @@
   var W = 0, H = 0, DPR = 1;
   var cx = 0, cy = 0;          // centro do globo (px CSS)
   var radius = 0;              // raio do globo (px CSS)
-  var FOCAL = 3.2;             // perspectiva (maior = mais suave)
+  var FOCAL = 4.0;             // perspectiva (maior = mais redondo/menos bulge)
 
   var points = [];            // pontos unitários da esfera
   var stars = [];             // fundo "infinito"
@@ -257,8 +254,9 @@
      RESIZE
      ============================================================ */
   function resize() {
-    W = canvas.clientWidth  || window.innerWidth;
-    H = canvas.clientHeight || window.innerHeight;
+    var rect = canvas.getBoundingClientRect();
+    W = Math.round(rect.width)  || window.innerWidth;
+    H = Math.round(rect.height) || window.innerHeight;
     DPR = Math.min(window.devicePixelRatio || 1, 2);
 
     canvas.width  = Math.round(W * DPR);
@@ -421,11 +419,19 @@
   function clearPointer() { pointer.active = false; growTarget = 1; }
 
   window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", function () { setTimeout(resize, 250); });
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
   window.addEventListener("mousemove", setPointer, { passive: true });
   window.addEventListener("mouseleave", clearPointer);
   window.addEventListener("touchstart", setPointer, { passive: true });
   window.addEventListener("touchmove", setPointer, { passive: true });
   window.addEventListener("touchend", clearPointer);
+
+  // Observa o tamanho REAL do canvas — mais confiável que resize/visualViewport
+  // no mobile (pega o reflow da barra de endereço do iOS/Android).
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { resize(); }).observe(canvas);
+  }
 
   /* ============================================================
      POSIÇÃO DO SLOGAN — centro do bloco no meio do vão entre
@@ -445,6 +451,8 @@
      INIT
      ============================================================ */
   resize();
+  requestAnimationFrame(function () { resize(); });   // re-mede após o 1º layout
+  window.addEventListener("load", resize);             // e depois que tudo carregou
   requestAnimationFrame(frame);
 })();
 </script>
