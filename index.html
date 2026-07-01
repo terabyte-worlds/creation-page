@@ -96,6 +96,7 @@
   .status {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 9px;
     font-size: 12px;
     font-weight: 700;
@@ -103,6 +104,7 @@
     text-transform: uppercase;
     color: var(--frost);
   }
+  footer .status { margin-top: 18px; }
   .status .dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -153,11 +155,6 @@
     :root { --pad: 18px; }
     .mark-img { height: 26px; }
     .wordmark { font-size: 14px; letter-spacing: 0.10em; }
-    .status { font-size: 10px; letter-spacing: 0.12em; gap: 7px; }
-    .status .dot { width: 6px; height: 6px; }
-  }
-  @media (max-width: 380px) {
-    .status { display: none; }   /* telas muito estreitas: cabeçalho limpo */
   }
 </style>
 </head>
@@ -174,7 +171,6 @@
         <!-- Se o seu PNG já tiver o nome "Terabyte Worlds" escrito, apague a linha abaixo. -->
         <span class="wordmark"><b>TERABYTE</b> <span>WORLDS</span></span>
       </div>
-      <div class="status"><span class="dot"></span><span>under creation</span></div>
     </header>
 
     <div class="divider"></div>
@@ -183,6 +179,7 @@
 
     <footer>
       <h1 class="tagline">where brands become worlds</h1>
+      <div class="status"><span class="dot"></span><span>under creation</span></div>
     </footer>
   </div>
 
@@ -306,7 +303,7 @@
   var TILT_Z =  0.30;
 
   function drawGlobe(dt) {
-    spin += (reduceMotion ? 0.001 : 0.003) * dt;   // rotação bem lenta (~35s por volta)
+    spin += (reduceMotion ? 0.0007 : 0.0018) * dt;   // rotação bem lenta (~58s por volta)
 
     grow += (growTarget - grow) * 0.08;
     var R = radius * grow;
@@ -443,7 +440,7 @@
     var globeBottom = cy + radius;
     var mid = (globeBottom + H) / 2;
     // trava: não cola no globo nem sai da tela em telas curtas
-    mid = Math.max(globeBottom + 20, Math.min(mid, H - 28));
+    mid = Math.max(globeBottom + 24, Math.min(mid, H - 48));
     footer.style.top = mid + "px";
   }
 
