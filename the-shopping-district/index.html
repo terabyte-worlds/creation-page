@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terabyte Worlds — LinkedIn Covers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS — brandbook Terabyte Worlds
+   ============================================================ */
+:root{
+  --deep-space:#0A0E1A;
+  --electric:#00F5FF;
+  --signal:#0099CC;
+  --frost:#E8F4F8;
+  --steel:#4A5568;
+  --neutro:#12161F;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--neutro);
+  color:var(--frost);
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:13px;
+  padding:32px 24px 56px;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.eyebrow{
+  font-family:'Space Grotesk',sans-serif;font-weight:500;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--steel);
+  text-align:center;
+}
+#palco{position:relative;width:100%;line-height:0;transition:width .2s ease}
+#tela{display:block;width:100%;height:auto;border-radius:2px}
+
+/* overlay de safe zones — DOM puro, nunca entra no PNG */
+#zonas{position:absolute;inset:0;pointer-events:none;display:none}
+#zonas.on{display:block}
+#zonas div{position:absolute}
+
+#barra{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;max-width:100%}
+button,select{
+  font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:12px;letter-spacing:.04em;
+  color:var(--frost);background:var(--deep-space);border:1px solid var(--signal);
+  padding:9px 16px;border-radius:2px;cursor:pointer;transition:background .15s ease;
+}
+button{background:transparent}
+button:hover{background:rgba(0,153,204,.12)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--electric);outline-offset:2px}
+button.primario{border-color:var(--electric);color:var(--electric)}
+button.primario:hover{background:rgba(0,245,255,.1)}
+#status{color:var(--steel);min-height:16px;text-align:center}
+#specs{color:var(--steel);font-size:11px;max-width:720px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+
+<span class="eyebrow" id="rotulo">—</span>
+
+<div id="palco">
+  <canvas id="tela" role="img" aria-label="Campo de mundos pontilhados em geometrias variadas"></canvas>
+  <div id="zonas" aria-hidden="true"></div>
+</div>
+
+<div id="barra">
+  <select id="formato" aria-label="Formato de saída">
+    <option value="perfil" selected>Perfil pessoal — 1584 × 396 (4:1)</option>
+    <option value="pagina">Company Page cover — 1128 × 191 (5.9:1)</option>
+    <option value="life">Life tab hero — 1128 × 376 (3:1)</option>
+  </select>
+  <button id="btnExport" class="primario">Baixar PNG @3x</button>
+  <button id="btnCongelar">Congelar</button>
+  <button id="btnZonas">Mostrar safe zones</button>
+</div>
+<div id="status"></div>
+<div id="specs"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   TOKENS
+   ============================================================ */
+const FROST = [232,244,248];
+const STEEL = [74,85,104];
+const ELECTRIC = '#00F5FF';
+
+const FOCAL = 4.0;
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+const DENSIDADE_STARFIELD = 2600;   // (W*H)/valor = total de estrelas nas 3 camadas
+const LIMITE_LINKEDIN = 8 * 1024 * 1024;  // 8 MB — teto oficial de upload
+
+/* ============================================================
+   FORMATOS OFICIAIS DO LINKEDIN
+   Fontes: LinkedIn Help (Image specifications for Pages) e
+   guias verificados 2026. Máx. 8 MB, JPG ou PNG.
+   Cada formato tem composição e safe zones próprias — não é
+   o mesmo desenho esticado.
+   ============================================================ */
+const LAYOUTS = {
+  perfil: {
+    rotulo: 'Perfil pessoal · 1584 × 396 · 4:1',
+    nota: 'Foto de perfil cobre o canto inferior esquerdo. Crop mobile preserva os 60% centrais.',
+    arquivo: 'terabyte_linkedin-perfil',
+    W:1584, H:396, dotA:0.72, dotB:0.74, flut:1.8,
+    zonas: [
+      { cls:'margem', x:32,  y:32,  w:1520, h:332 },
+      { cls:'mobile', x:317, y:0,   w:950,  h:396 },
+      { cls:'morta',  x:40,  y:210, w:300,  h:186 }
+    ],
+    mundos: [
+      { x:1090, y:206, r:104, d:1.00, per:66, tipo:'principal', n:1850, anelEsc:1.36, anelN:520 },
+      { x: 880, y:104, r: 52, d:0.72, per:75, tipo:'latitudes', n: 760 },
+      { x:1392, y:300, r: 42, d:0.60, per:58, tipo:'oblata',    n: 640 },
+      { x: 640, y: 86, r: 36, d:0.50, per:82, tipo:'nucleo',    n: 520 },
+      { x:1500, y: 92, r: 25, d:0.38, per:52, tipo:'cinturao',  n: 280 },
+      { x: 452, y: 60, r: 26, d:0.34, per:70, tipo:'fragmento', n: 380 },
+      { x:1256, y: 52, r: 17, d:0.30, per:45, tipo:'cinturao',  n: 180 },
+      { x: 292, y:116, r: 22, d:0.26, per:88, tipo:'esfera',    n: 300 },
+      { x: 764, y:300, r: 16, d:0.22, per:61, tipo:'esfera',    n: 200 },
+      { x: 128, y: 60, r: 30, d:0.18, per:78, tipo:'latitudes', n: 300 }
+    ]
+  },
+
+  pagina: {
+    rotulo: 'Company Page cover · 1128 × 191 · 5.9:1',
+    nota: 'Logo cobre o canto inferior esquerdo; o LinkedIn também pede espaço livre no canto inferior direito (botões da página).',
+    arquivo: 'terabyte_linkedin-page-cover',
+    W:1128, H:191, dotA:0.55, dotB:0.55, flut:1.1,
+    zonas: [
+      { cls:'margem', x:24,  y:24,  w:1080, h:143 },
+      { cls:'mobile', x:225, y:0,   w:675,  h:191 },
+      { cls:'morta',  x:30,  y:95,  w:220,  h:96  },
+      { cls:'morta',  x:900, y:130, w:204,  h:61  }
+    ],
+    mundos: [
+      { x:798,  y: 94, r:56, d:1.00, per:64, tipo:'principal', n:1100, anelEsc:1.34, anelN:340 },
+      { x:646,  y: 50, r:27, d:0.72, per:73, tipo:'latitudes', n: 480 },
+      { x:972,  y: 52, r:21, d:0.60, per:57, tipo:'oblata',    n: 400 },
+      { x:470,  y: 42, r:19, d:0.50, per:80, tipo:'nucleo',    n: 360 },
+      { x:1080, y: 88, r:13, d:0.38, per:51, tipo:'cinturao',  n: 200 },
+      { x:330,  y: 30, r:14, d:0.34, per:68, tipo:'fragmento', n: 280 },
+      { x:900,  y: 26, r: 9, d:0.30, per:44, tipo:'cinturao',  n: 130 },
+      { x:205,  y: 56, r:12, d:0.26, per:86, tipo:'esfera',    n: 220 },
+      { x:560,  y:148, r: 9, d:0.20, per:59, tipo:'esfera',    n: 140 },
+      { x: 92,  y: 32, r:17, d:0.18, per:76, tipo:'latitudes', n: 220 }
+    ]
+  },
+
+  life: {
+    rotulo: 'Life tab hero · 1128 × 376 · 3:1',
+    nota: 'Sem sobreposição de logo. O LinkedIn pode aplicar overlay de texto à esquerda — deixei essa faixa mais calma.',
+    arquivo: 'terabyte_linkedin-life-hero',
+    W:1128, H:376, dotA:0.68, dotB:0.70, flut:1.6,
+    zonas: [
+      { cls:'margem', x:32,  y:32, w:1064, h:312 },
+      { cls:'mobile', x:225, y:0,  w:678,  h:376 }
+    ],
+    mundos: [
+      { x:790,  y:198, r:92, d:1.00, per:66, tipo:'principal', n:1500, anelEsc:1.36, anelN:460 },
+      { x:604,  y: 96, r:44, d:0.72, per:75, tipo:'latitudes', n: 640 },
+      { x:996,  y:288, r:36, d:0.60, per:58, tipo:'oblata',    n: 540 },
+      { x:424,  y: 76, r:30, d:0.50, per:82, tipo:'nucleo',    n: 440 },
+      { x:1064, y: 86, r:22, d:0.38, per:52, tipo:'cinturao',  n: 250 },
+      { x:296,  y: 56, r:22, d:0.34, per:70, tipo:'fragmento', n: 330 },
+      { x:880,  y: 42, r:14, d:0.30, per:45, tipo:'cinturao',  n: 160 },
+      { x:176,  y:120, r:18, d:0.26, per:88, tipo:'esfera',    n: 260 },
+      { x:520,  y:296, r:14, d:0.22, per:61, tipo:'esfera',    n: 180 },
+      { x: 74,  y: 54, r:24, d:0.18, per:78, tipo:'latitudes', n: 260 }
+    ]
+  }
+};
+
+/* ============================================================
+   GERAÇÃO — PRNG semeado (preview e PNG são idênticos)
+   ============================================================ */
+function prng(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rand = prng(20260830);   // reatribuído a cada troca de formato
+
+/* ---------- geometrias: cada mundo tem uma construção diferente ---------- */
+
+// Esfera de Fibonacci — a construção do holder
+function esferaFib(n, raio = 1, achatarY = 1){
+  const p = new Array(n);
+  for(let i = 0; i < n; i++){
+    const y = 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = GOLDEN * i;
+    p[i] = { x: Math.cos(th) * r * raio, y: y * raio * achatarY, z: Math.sin(th) * r * raio };
+  }
+  return p;
+}
+
+// Globo em latitudes — anéis paralelos, leitura de wireframe
+function esferaLatitudes(n, bandas = 11){
+  const p = [];
+  for(let b = 0; b < bandas; b++){
+    const lat = -Math.PI / 2 + Math.PI * (b + 0.5) / bandas;
+    const y = Math.sin(lat), r = Math.cos(lat);
+    const qtd = Math.max(6, Math.round((n / bandas) * r * 1.5));
+    const off = rand() * Math.PI * 2;
+    for(let i = 0; i < qtd; i++){
+      const th = off + (i / qtd) * Math.PI * 2;
+      p.push({ x: Math.cos(th) * r, y, z: Math.sin(th) * r });
+    }
+  }
+  return p;
+}
+
+// Núcleo + casca — mundo com massa, não só superfície
+function esferaNucleo(n){
+  return esferaFib(Math.round(n * 0.62), 1).concat(esferaFib(Math.round(n * 0.38), 0.42));
+}
+
+// Mundo fragmentado — cunha faltando e raio irregular (em formação)
+function esferaFragmentada(n){
+  const p = [];
+  const base = esferaFib(n, 1);
+  const gap0 = rand() * Math.PI * 2, gap = 0.9;
+  for(const q of base){
+    const th = Math.atan2(q.z, q.x);
+    const d = Math.abs(((th - gap0 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    if(d > Math.PI - gap) continue;
+    const k = 0.88 + rand() * 0.26;
+    p.push({ x: q.x * k, y: q.y * k, z: q.z * k });
+  }
+  return p;
+}
+
+// Cinturão — só a faixa orbital, sem corpo
+function cinturao(n, r0 = 1, esp = 0.06){
+  const p = new Array(n);
+  for(let i = 0; i < n; i++){
+    const th = rand() * Math.PI * 2;
+    const r = r0 * (0.9 + rand() * 0.22);
+    p[i] = { x: Math.cos(th) * r, y: (rand() - 0.5) * esp * 2, z: Math.sin(th) * r };
+  }
+  return p;
+}
+
+// Anel duplo com divisão — assinatura do mundo principal
+function anel(n){
+  const p = new Array(n);
+  for(let i = 0; i < n; i++){
+    const th = rand() * Math.PI * 2;
+    const r = rand() < 0.55 ? 0.84 + rand() * 0.13 : 1.03 + rand() * 0.15;
+    p[i] = { x: Math.cos(th) * r, y: (rand() - 0.5) * 0.05, z: Math.sin(th) * r };
+  }
+  return p;
+}
+
+function montarPartes(c){
+  const P = [];
+  const add = (base, o = {}) => P.push(Object.assign({
+    base, escala:1, tiltX:-0.42, tiltZ:0.30, velMul:1, alphaMul:1, dotMul:1, acentos:null
+  }, o));
+
+  switch(c.tipo){
+    case 'principal':
+      add(esferaFib(c.n), {
+        acentos: new Set([0.11,0.34,0.58,0.87].map(f => Math.floor(c.n * f)))
+      });
+      // anel em eixo próprio, girando mais devagar — oclusão resolvida no z-sort global
+      add(anel(c.anelN), { escala:c.anelEsc, tiltX:0.62, tiltZ:-0.18, velMul:0.55, alphaMul:0.68, dotMul:0.78 });
+      break;
+    case 'latitudes': add(esferaLatitudes(c.n), { tiltX:-0.28, tiltZ:0.44 }); break;
+    case 'oblata':    add(esferaFib(c.n, 1, 0.62), { tiltX:-0.55, dotMul:0.9 }); break;
+    case 'nucleo':    add(esferaNucleo(c.n), { tiltX:-0.36 }); break;
+    case 'fragmento': add(esferaFragmentada(c.n), { tiltX:-0.5, tiltZ:0.6 }); break;
+    case 'cinturao':
+      add(cinturao(c.n), { escala:1.25, tiltX:0.5, tiltZ:0.2, dotMul:0.9 });
+      add(esferaFib(Math.round(c.n * 0.35), 0.45), { alphaMul:0.9 });
+      break;
+    default:          add(esferaFib(c.n));
+  }
+  return P;
+}
+
+/* ---------- montagem da cena para o formato ativo ---------- */
+let L, W, H, mundos = [], estrelas = [], NEBULOSAS = [];
+
+const CAMADAS = [
+  { frac:0.50, r:[0.30,0.60], a:[0.10,0.26], drift:0.25, steel:0.75 }, // fundo
+  { frac:0.32, r:[0.50,0.90], a:[0.20,0.45], drift:0.9,  steel:0.35 }, // meio
+  { frac:0.18, r:[0.70,1.25], a:[0.35,0.75], drift:2.2,  steel:0.10 }  // frente
+];
+
+function construir(chave){
+  L = LAYOUTS[chave];
+  W = L.W; H = L.H;
+  rand = prng(20260830);            // mesma semente → resultado reprodutível
+
+  mundos = L.mundos.map(c => {
+    const partes = montarPartes(c);
+    const total = partes.reduce((s, p) => s + p.base.length, 0);
+    const mix = (1 - c.d) * 0.85;   // perspectiva aérea: longe esfria para Steel
+    const rgb = FROST.map((v, i) => Math.round(v + (STEEL[i] - v) * mix));
+    return {
+      ...c, partes,
+      prefixo: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},`,
+      buf: Array.from({ length: total }, () => ({ sx:0, sy:0, tam:0, a:0, z:0, aceso:false })),
+      spin: rand() * Math.PI * 2,
+      vel : (Math.PI * 2) / c.per,
+      fase: rand() * Math.PI * 2,
+      flutW: (Math.PI * 2) / (22 + rand() * 20),
+      alpha: 0.16 + c.d * 0.84,
+      dot  : L.dotA + c.d * L.dotB
+    };
+  });
+
+  const total = Math.round((W * H) / DENSIDADE_STARFIELD);
+  estrelas = [];
+  for(const cam of CAMADAS){
+    const n = Math.round(total * cam.frac);
+    for(let i = 0; i < n; i++){
+      const c = rand() < cam.steel ? STEEL : FROST;
+      estrelas.push({
+        x: rand() * W, y: rand() * H,
+        r: cam.r[0] + rand() * (cam.r[1] - cam.r[0]),
+        a: cam.a[0] + rand() * (cam.a[1] - cam.a[0]),
+        drift: cam.drift * (0.7 + rand() * 0.6),
+        prefixo: `rgba(${c[0]},${c[1]},${c[2]},`,
+        fase: rand() * Math.PI * 2,
+        freq: 0.2 + rand() * 0.6
+      });
+    }
+  }
+
+  NEBULOSAS = [
+    { x:0.70, y:0.46, r:0.48, cor:'20,44,72',  a:0.16 },
+    { x:0.40, y:0.18, r:0.34, cor:'0,153,204', a:0.055 },
+    { x:0.90, y:0.82, r:0.30, cor:'26,32,56',  a:0.14 },
+    { x:0.14, y:0.32, r:0.26, cor:'30,40,64',  a:0.10 }
+  ];
+}
+
+/* ============================================================
+   RESIZE / CHROME DA PÁGINA
+   ============================================================ */
+const tela = document.getElementById('tela');
+const ctx  = tela.getContext('2d');
+const palco = document.getElementById('palco');
+const zonas = document.getElementById('zonas');
+let dpr = 1;
+
+function montarZonas(){
+  zonas.innerHTML = '';
+  for(const z of L.zonas){
+    const d = document.createElement('div');
+    const cor = z.cls === 'morta' ? 'var(--electric)'
+              : z.cls === 'mobile' ? 'var(--steel)' : 'var(--signal)';
+    d.style.cssText =
+      `left:${z.x / W * 100}%;top:${z.y / H * 100}%;` +
+      `width:${z.w / W * 100}%;height:${z.h / H * 100}%;` +
+      `border:1px dashed ${cor};opacity:${z.cls === 'morta' ? .8 : .5}`;
+    zonas.appendChild(d);
+  }
+}
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  tela.width  = Math.round(W * dpr);
+  tela.height = Math.round(H * dpr);
+  palco.style.width = W + 'px';
+  palco.style.maxWidth = '100%';
+  desenhar();
+}
+window.addEventListener('resize', resize);
+
+/* ============================================================
+   FUNDO — gradiente base, nebulosa, starfield, vinheta
+   ============================================================ */
+function fundoBase(c){
+  c.save();
+  c.translate(0.68 * W, 0.45 * H);
+  c.scale(1.20 * W, 0.90 * H);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+  g.addColorStop(0.00, '#0E1526');
+  g.addColorStop(0.55, '#0A0E1A');
+  g.addColorStop(1.00, '#06090F');
+  c.fillStyle = g;
+  c.fillRect(-2, -2, 4, 4);
+  c.restore();
+}
+
+function nebulosa(c, t){
+  for(let i = 0; i < NEBULOSAS.length; i++){
+    const n = NEBULOSAS[i];
+    const deriva = Math.sin(t * 0.05 + i) * (W * 0.01);   // respiração lenta
+    c.save();
+    c.translate(n.x * W + deriva, n.y * H);
+    c.scale(W * n.r, H * n.r * 2.1);
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0, `rgba(${n.cor},${n.a})`);
+    g.addColorStop(1, `rgba(${n.cor},0)`);
+    c.fillStyle = g;
+    c.fillRect(-1, -1, 2, 2);
+    c.restore();
+  }
+}
+
+function starfield(c, t){
+  for(const e of estrelas){
+    const x = (e.x + t * e.drift) % (W + 10) - 5;
+    const tw = 0.6 + 0.4 * Math.sin(t * e.freq + e.fase);
+    c.fillStyle = e.prefixo + (e.a * tw).toFixed(3) + ')';
+    c.beginPath();
+    c.arc(x, e.y, e.r, 0, Math.PI * 2);
+    c.fill();
+  }
+}
+
+// vinheta lateral: aprofunda as bordas e protege o crop mobile
+function vinheta(c){
+  const g = c.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0.00, 'rgba(6,9,15,0.72)');
+  g.addColorStop(0.17, 'rgba(6,9,15,0)');
+  g.addColorStop(0.83, 'rgba(6,9,15,0)');
+  g.addColorStop(1.00, 'rgba(6,9,15,0.72)');
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+}
+
+/* ============================================================
+   MUNDOS — projeção, z-sort global (corpo + anel), acentos
+   ============================================================ */
+function desenharMundo(c, m, t, escala){
+  const spinBase = m.spin + t * m.vel;
+  const cy = m.y + Math.sin(t * m.flutW + m.fase) * L.flut * m.d;   // respiro vertical
+  const buf = m.buf;
+  let k = 0;
+
+  for(const parte of m.partes){
+    const spin = spinBase * parte.velMul;
+    const cs = Math.cos(spin), sn = Math.sin(spin);
+    const cx1 = Math.cos(parte.tiltX), sx1 = Math.sin(parte.tiltX);
+    const cz1 = Math.cos(parte.tiltZ), sz1 = Math.sin(parte.tiltZ);
+    const R = m.r * parte.escala;
+    const base = parte.base;
+
+    for(let i = 0; i < base.length; i++){
+      const p = base[i];
+      const x1 =  p.x * cs + p.z * sn;        // spin em Y
+      const z1 = -p.x * sn + p.z * cs;
+      const y2 =  p.y * cx1 - z1 * sx1;       // tilt em X
+      const z2 =  p.y * sx1 + z1 * cx1;
+      const x3 =  x1 * cz1 - y2 * sz1;        // tilt em Z (eixo diagonal, como no holder)
+      const y3 =  x1 * sz1 + y2 * cz1;
+
+      const persp = FOCAL / (FOCAL - z2);
+      const depth = (z2 + 1) / 2;
+      const o = buf[k++];
+      o.sx = m.x + x3 * R * persp;
+      o.sy = cy  - y3 * R * persp;
+      o.tam = m.dot * (0.55 + 0.9 * depth) * persp * parte.dotMul;
+      o.a  = (0.10 + 0.9 * Math.pow(depth, 1.4)) * m.alpha * parte.alphaMul;
+      o.z  = z2 * parte.escala;               // escala no z para o anel ocluir certo
+      o.aceso = !!(parte.acentos && parte.acentos.has(i) && depth > 0.5);
+    }
+  }
+
+  buf.sort((a, b) => a.z - b.z);
+
+  for(let i = 0; i < buf.length; i++){
+    const o = buf[i];
+    if(o.aceso){
+      c.fillStyle = ELECTRIC;
+      c.shadowColor = ELECTRIC;
+      c.shadowBlur = 10 * escala;             // shadowBlur ignora a matriz de transform
+      c.globalAlpha = Math.min(1, o.a * 1.2);
+      c.beginPath();
+      c.arc(o.sx, o.sy, Math.max(0.4, o.tam * 1.3), 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+      c.globalAlpha = 1;
+    } else {
+      c.fillStyle = m.prefixo + o.a.toFixed(3) + ')';
+      c.beginPath();
+      c.arc(o.sx, o.sy, Math.max(0.35, o.tam), 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+}
+
+/* ============================================================
+   RENDER — mesma função para tela e export.
+   `escala` só multiplica coordenadas; a contagem de pontos é
+   sempre a do espaço lógico do formato, nunca a da resolução final.
+   ============================================================ */
+function renderCena(c, escala, t){
+  c.setTransform(escala, 0, 0, escala, 0, 0);
+  c.clearRect(0, 0, W, H);
+  fundoBase(c);
+  nebulosa(c, t);
+  starfield(c, t);
+  for(let i = mundos.length - 1; i >= 0; i--) desenharMundo(c, mundos[i], t, escala); // longe → perto
+  vinheta(c);
+}
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let tempo = reduzido ? 8 : 0;
+let congelado = reduzido;
+let ultimo = performance.now();
+
+function desenhar(){ renderCena(ctx, dpr, tempo); }
+
+function loop(agora){
+  const dt = Math.min((agora - ultimo) / 1000, 0.05);
+  ultimo = agora;
+  if(!congelado) tempo += dt;
+  desenhar();
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   EXPORT — offscreen no formato ativo × 3.
+   PNG por padrão; se estourar os 8 MB do LinkedIn, cai para JPEG.
+   ============================================================ */
+const status = document.getElementById('status');
+
+function baixar(blob, nome){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function exportar(){
+  const w = W * 3, h = H * 3;
+  status.textContent = `Renderizando ${w} × ${h}…`;
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  renderCena(off.getContext('2d'), 3, tempo);
+
+  off.toBlob(blob => {
+    if(!blob){ status.textContent = 'Falha ao gerar a imagem.'; return; }
+    const mb = (blob.size / 1048576).toFixed(1);
+    if(blob.size <= LIMITE_LINKEDIN){
+      baixar(blob, `${L.arquivo}_v4@3x.png`);
+      status.textContent = `PNG salvo — ${w} × ${h}, ${mb} MB.`;
+    } else {
+      off.toBlob(jpg => {
+        baixar(jpg, `${L.arquivo}_v4@3x.jpg`);
+        status.textContent = `PNG passou de 8 MB (${mb} MB), o teto do LinkedIn. Salvo em JPEG q92 — ${(jpg.size / 1048576).toFixed(1)} MB.`;
+      }, 'image/jpeg', 0.92);
+    }
+  }, 'image/png');
+}
+
+/* ============================================================
+   CONTROLES
+   ============================================================ */
+const btnCongelar = document.getElementById('btnCongelar');
+const btnZonas = document.getElementById('btnZonas');
+const seletor = document.getElementById('formato');
+const rotulo = document.getElementById('rotulo');
+const specs = document.getElementById('specs');
+
+function trocarFormato(){
+  construir(seletor.value);
+  montarZonas();
+  resize();
+  rotulo.textContent = L.rotulo;
+  specs.textContent = L.nota + ' Máximo 8 MB, JPG ou PNG.';
+  status.textContent = '';
+}
+
+seletor.addEventListener('change', trocarFormato);
+document.getElementById('btnExport').addEventListener('click', exportar);
+btnCongelar.addEventListener('click', () => {
+  congelado = !congelado;
+  btnCongelar.textContent = congelado ? 'Retomar' : 'Congelar';
+});
+if(reduzido) btnCongelar.textContent = 'Retomar';
+btnZonas.addEventListener('click', () => {
+  const on = zonas.classList.toggle('on');
+  btnZonas.textContent = on ? 'Ocultar safe zones' : 'Mostrar safe zones';
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function iniciar(){
+  trocarFormato();
+  requestAnimationFrame(t => { ultimo = t; loop(t); });
+}
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(iniciar);
+else window.addEventListener('load', iniciar);
+
+})();
+</script>
+</body>
+</html>
