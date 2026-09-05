@@ -145,13 +145,30 @@
     text-align: center;
     padding: 0 var(--pad);
   }
-  .tagline {
+   .tagline {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 500;
     font-size: clamp(17px, 2.2vw, 24px);
     letter-spacing: 0.01em;
     color: var(--frost);
     line-height: 1.15;
+  }
+  .project-link {
+    display: inline-block;
+    margin-top: 22px;
+    pointer-events: auto;              /* .stage tem pointer-events:none */
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--electric);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0,245,255,0.35);
+    padding-bottom: 3px;
+  }
+  .project-link:hover { border-bottom-color: var(--electric); }
+  .project-link:focus-visible { outline: 2px solid var(--electric); outline-offset: 4px; }
   }
 
   @media (max-width: 600px) {
@@ -183,6 +200,7 @@
     <footer>
       <h1 class="tagline">discover your next world</h1>
       <div class="status"><span class="dot"></span><span>under creation</span></div>
+      <a class="project-link" href="/the-shopping-district/">The Shopping District</a>
     </footer>
   </div>
 
