@@ -560,6 +560,45 @@ a.mundo:hover .rotulo .estado{ color:var(--frost); }
 .topo:active{ transform:scale(0.96); }
 .topo:focus-visible{ outline:2px solid var(--electric); outline-offset:3px; }
 @media (prefers-reduced-motion: reduce){ .topo{ transform:none; transition:opacity 200ms; } .topo:hover svg{ transform:none; } }
+
+/* ==================== ajustes de celular ==================== */
+/* o seletor de idioma sai do cabecalho e vira botao flutuante; isso libera
+   espaco suficiente para o nome da marca caber junto do logo no celular */
+@media (max-width:639px){
+  .cabecalho{ padding:0 14px 0 16px; gap:12px; }
+  .marca{ gap:12px; padding:8px 0; }
+  .wordmark{ display:inline; font-size:13px; letter-spacing:0.10em; }
+  .nav .idioma{ display:none; }
+  .nav a{ padding:12px 0; }
+}
+@media (max-width:339px){ .wordmark{ display:none; } }
+
+/* botao flutuante de idioma: so no celular, logo acima da seta de voltar ao topo */
+.idioma-flutuante{ display:none; }
+@media (max-width:639px){
+  .idioma-flutuante{
+    position:fixed; right:max(20px, var(--pad)); bottom:132px; z-index:9;
+    display:grid; place-items:center; width:48px; height:48px; border-radius:50%;
+    font-family:var(--font-title); font-weight:500; font-size:13px; letter-spacing:0.06em;
+    color:var(--electric); text-decoration:none;
+    transition:color 200ms, border-color 200ms;
+  }
+  .idioma-flutuante:active{ transform:scale(0.96); }
+  .idioma-flutuante:focus-visible{ outline:2px solid var(--electric); outline-offset:3px; }
+}
+
+/* ---- etiquetas dos mundos no celular ---- */
+@media (max-width:639px){
+  /* mundos "em exploracao" nao mostram etiqueta no celular */
+  .mundo.futuro .rotulo,.mundo.futuro .linha{ display:none; }
+  /* etiqueta centrada no mundo e presa a largura da tela, em vez de sair pela lateral */
+  .mundo .rotulo,.mundo.lado-esq .rotulo{
+    left:50%; right:auto; transform:translateX(-50%);
+    align-items:center; text-align:center;
+    white-space:normal; width:max-content;
+    max-width:calc(100vw - var(--pad) * 2);
+  }
+}
 </style>
 </head>
 <body>
@@ -732,6 +771,7 @@ a.mundo:hover .rotulo .estado{ color:var(--frost); }
   </div>
 </section>
 
+<a class="idioma-flutuante vidro" href="../" lang="pt-BR" hreflang="pt-BR" aria-label="Mudar para português">PT</a>
 <a class="topo vidro" href="#" id="voltar-topo" aria-label="Back to top"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15V3.5M4 8.5 9 3.5l5 5"/></svg></a>
 
 <footer class="rodape">
@@ -1288,11 +1328,32 @@ if(reduzido){
 }
 
 /* ---------- toque: etiqueta aparece quando o mundo passa pela faixa central da tela ---------- */
-if(window.matchMedia('(hover:none)').matches && 'IntersectionObserver' in window){
-  const ioMundos = new IntersectionObserver(entradas => {
-    for(const e of entradas) e.target.classList.toggle('visivel', e.isIntersecting);
-  }, { rootMargin:'-30% 0px -30% 0px', threshold:0 });
-  campo.querySelectorAll('.mundo').forEach(el => ioMundos.observe(el));
+if(window.matchMedia('(hover:none)').matches){
+  /* no toque, so UMA etiqueta acesa por vez: a do mundo mais proximo do centro da
+     tela. Mundos "em exploracao" ficam de fora. Passivo e limitado a um quadro. */
+  const alvosEtiqueta = Array.from(campo.querySelectorAll('.mundo')).filter(el => !el.classList.contains('futuro'));
+  let etiquetaAcesa = null, etiquetaPend = false;
+  const escolherEtiqueta = () => {
+    etiquetaPend = false;
+    const meio = window.innerHeight / 2, limite = window.innerHeight * 0.32;
+    let melhor = null, menor = Infinity;
+    for(const el of alvosEtiqueta){
+      const r = el.getBoundingClientRect();
+      if(r.bottom < 0 || r.top > window.innerHeight) continue;
+      const d = Math.abs((r.top + r.bottom) / 2 - meio);
+      if(d < menor){ menor = d; melhor = el; }
+    }
+    if(menor > limite) melhor = null;
+    if(melhor !== etiquetaAcesa){
+      if(etiquetaAcesa) etiquetaAcesa.classList.remove('visivel');
+      if(melhor) melhor.classList.add('visivel');
+      etiquetaAcesa = melhor;
+    }
+  };
+  const agendarEtiqueta = () => { if(!etiquetaPend){ etiquetaPend = true; requestAnimationFrame(escolherEtiqueta); } };
+  window.addEventListener('scroll', agendarEtiqueta, { passive:true });
+  window.addEventListener('resize', agendarEtiqueta, { passive:true });
+  escolherEtiqueta();
 }
 
 /* ============================================================
