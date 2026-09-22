@@ -165,7 +165,6 @@ p{ max-width:66ch; text-wrap:pretty; }
 .marca{ display:flex; align-items:center; gap:14px; color:var(--frost); }
 .marca img{ height:28px; width:auto; }
 .wordmark{ font-family:var(--font-title); font-size:15px; letter-spacing:0.14em; line-height:1; white-space:nowrap; color:var(--frost); }
-@media (max-width:639px){ .wordmark{ display:none; } }
 @media (min-width:640px){ .wordmark{ font-size:17px; } }
 .wordmark b{ font-weight:700; }
 .wordmark span{ font-weight:400; }
@@ -332,6 +331,32 @@ p{ max-width:66ch; text-wrap:pretty; }
 .topo:active{ transform:scale(0.96); }
 .topo:focus-visible{ outline:2px solid var(--electric); outline-offset:3px; }
 @media (prefers-reduced-motion: reduce){ .topo{ transform:none; transition:opacity 200ms; } .topo:hover svg{ transform:none; } }
+
+/* ==================== ajustes de celular ==================== */
+/* o seletor de idioma sai do cabecalho e vira botao flutuante; isso libera
+   espaco suficiente para o nome da marca caber junto do logo no celular */
+@media (max-width:639px){
+  .cabecalho{ padding:0 14px 0 16px; gap:12px; }
+  .marca{ gap:12px; padding:8px 0; }
+  .wordmark{ display:inline; font-size:13px; letter-spacing:0.10em; }
+  .nav .idioma{ display:none; }
+  .nav a{ padding:12px 0; }
+}
+@media (max-width:339px){ .wordmark{ display:none; } }
+
+/* botao flutuante de idioma: so no celular, logo acima da seta de voltar ao topo */
+.idioma-flutuante{ display:none; }
+@media (max-width:639px){
+  .idioma-flutuante{
+    position:fixed; right:max(20px, var(--pad)); bottom:132px; z-index:9;
+    display:grid; place-items:center; width:48px; height:48px; border-radius:50%;
+    font-family:var(--font-title); font-weight:500; font-size:13px; letter-spacing:0.06em;
+    color:var(--electric); text-decoration:none;
+    transition:color 200ms, border-color 200ms;
+  }
+  .idioma-flutuante:active{ transform:scale(0.96); }
+  .idioma-flutuante:focus-visible{ outline:2px solid var(--electric); outline-offset:3px; }
+}
 </style>
 </head>
 <body>
@@ -456,6 +481,7 @@ p{ max-width:66ch; text-wrap:pretty; }
   </div>
 </section>
 
+<a class="idioma-flutuante vidro" href="../../multiverse-gun-game/" lang="pt-BR" hreflang="pt-BR" aria-label="Mudar para português">PT</a>
 <a class="topo vidro" href="#" id="voltar-topo" aria-label="Back to top"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15V3.5M4 8.5 9 3.5l5 5"/></svg></a>
 
 <footer class="rodape">
